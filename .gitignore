@@ -1,0 +1,18 @@
+# окружение, зависимости, сборка
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+
+# результаты прогона test_data/run_check.py
+reports/
+
+# рабочие заметки разработки (локальные пути и скрипты)
+DEVLOG.md
+
+# секреты — никогда в репозиторий
+.env
+secrets/
+*.key
+*.token
