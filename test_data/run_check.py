@@ -1,5 +1,5 @@
 """Проверка бэкенда на работающем сервере: upload -> analyze -> report.
-Запуск: python -X utf8 run_check.py [yandex] [gigachat] [local]  (сервер должен работать на :5000;
+Запуск: python -X utf8 run_check.py [yandex] [gigachat] [local] [local-qwen]  (сервер должен работать на :5000;
 без аргументов — две облачные модели)"""
 import json
 import sys
@@ -13,12 +13,13 @@ out = here.parent / "reports"  # app/reports — в git не идёт
 out.mkdir(exist_ok=True)
 
 up = requests.post(f"{BASE}/api/upload", files={"file": open(here / "test_data.xlsx", "rb")}).json()
-FILES = {"yandex": "report-yandexgpt.pdf", "gigachat": "report-gigachat.pdf", "local": "report-local-ollama.pdf"}
+FILES = {"yandex": "report-yandexgpt.pdf", "gigachat": "report-gigachat.pdf", "local": "report-local-gemma3.pdf",
+         "local-qwen": "report-local-qwen3.pdf"}
 for provider in sys.argv[1:] or ["yandex", "gigachat"]:
     fname = FILES[provider]
     a = requests.post(f"{BASE}/api/analyze", json={"provider": provider, "columns": up["columns"],
                                                    "rows": up["rows"][:15]},
-                      timeout=4 * 3600 if provider == "local" else 120).json()
+                      timeout=4 * 3600 if provider.startswith("local") else 120).json()
     print("=====", provider, a.get("model"), a.get("seconds"), "с", a.get("error", ""))
     print(a.get("analysis", ""))
     (out / f"answer-{provider}.json").write_text(json.dumps(a, ensure_ascii=False, indent=1), encoding="utf-8")

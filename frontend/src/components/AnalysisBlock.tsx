@@ -34,7 +34,10 @@ export default function AnalysisBlock({ provider, onProvider, analysis, busy, er
             GigaChat
           </button>
           <button className={provider === 'local' ? 'on' : ''} onClick={() => onProvider('local')}>
-            Локальная (Ollama)
+            Gemma3 (локально)
+          </button>
+          <button className={provider === 'local-qwen' ? 'on' : ''} onClick={() => onProvider('local-qwen')}>
+            Qwen3 (локально)
           </button>
         </div>
         <button className="primary" onClick={onAnalyze} disabled={busy}>
@@ -44,7 +47,7 @@ export default function AnalysisBlock({ provider, onProvider, analysis, busy, er
           Скачать PDF-отчёт
         </button>
       </div>
-      {busy && provider === 'local' && (
+      {busy && provider.startsWith('local') && (
         <p className="hint">Модель работает на этом компьютере без видеокарты — ответ может идти от минут до часов.</p>
       )}
       {error && <p className="error">{error}</p>}

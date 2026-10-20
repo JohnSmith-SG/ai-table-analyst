@@ -28,7 +28,8 @@ N_ROWS = 15
 PROVIDERS = {
     "yandex": (yandex_gpt, yandex_gpt.MODEL_NAME),
     "gigachat": (gigachat, gigachat.MODEL_NAME),
-    "local": (ollama_local, ollama_local.MODEL_NAME),
+    "local": (ollama_local.GEMMA, ollama_local.GEMMA.MODEL_NAME),
+    "local-qwen": (ollama_local.QWEN, ollama_local.QWEN.MODEL_NAME),
 }
 
 # --- Шрифт с кириллицей для PDF (у коуча здесь были «?») ---
@@ -128,7 +129,7 @@ def analyze():
     d = request.get_json(force=True)
     provider = d.get("provider")
     if provider not in PROVIDERS:
-        return jsonify(error="provider должен быть yandex, gigachat или local"), 400
+        return jsonify(error="provider должен быть yandex, gigachat, local или local-qwen"), 400
     module, model_name = PROVIDERS[provider]
     rows = (d.get("rows") or [])[:N_ROWS]
     t0 = time.monotonic()

@@ -1,0 +1,10 @@
+# Вторая локальная модель для ИИ-аналитика таблиц — для сравнения с gemma3.
+# Сборка: ollama create qwen3:4b-analyst -f ollama/qwen3-analyst.Modelfile
+FROM qwen3:4b
+
+# температура та же, что у gemma3-analyst, — чтобы сравнение было честным
+PARAMETER temperature 0.3
+# qwen3 сначала «размышляет», и эти токены тоже входят в лимит:
+# промпт ~800 + размышления + ответ — нужен контекст 8192 и запас на длину
+PARAMETER num_ctx 8192
+PARAMETER num_predict 4096

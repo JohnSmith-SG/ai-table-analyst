@@ -7,5 +7,5 @@ export type TableData = {
   total_rows: number
   stats: Record<string, ColStats>
 }
-export type Provider = 'yandex' | 'gigachat' | 'local'
+export type Provider = 'yandex' | 'gigachat' | 'local' | 'local-qwen'
 export type Analysis = { analysis: string; model: string; seconds: number; provider: Provider }

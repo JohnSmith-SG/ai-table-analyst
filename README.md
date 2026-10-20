@@ -2,11 +2,11 @@
 
 Веб-приложение: загружаете таблицу (CSV, Excel или PDF с таблицей), видите её в браузере и
 график по любой числовой колонке, нажимаете «Проанализировать» — нейросеть на выбор (российские облачные **YandexGPT** и
-**GigaChat** или **локальная модель в Ollama** прямо на вашем компьютере) находит тенденции и аномалии, а отчёт с
+**GigaChat** или **две локальные модели в Ollama** — Gemma3 и Qwen3 — прямо на вашем компьютере) находит тенденции и аномалии, а отчёт с
 таблицей, статистикой и выводами скачивается в PDF.
 
 *Web app: upload a table (CSV / XLSX / PDF), see it with a chart, get an AI analysis from
-YandexGPT, GigaChat or a local Ollama model, download a PDF report. React + TypeScript (Vite) · Flask · pandas ·
+YandexGPT, GigaChat or local Gemma3 / Qwen3 via Ollama, download a PDF report. React + TypeScript (Vite) · Flask · pandas ·
 pdfplumber · reportlab.*
 
 ![Загрузка таблицы](docs/screenshots/app1-upload-table.png)
@@ -15,9 +15,11 @@ pdfplumber · reportlab.*
 |---|---|
 | ![График](docs/screenshots/app2-chart-anomaly.png) | ![Анализ](docs/screenshots/app3-analysis-yandexgpt.png) |
 
-Локальная модель gemma3:4b в Ollama — тот же анализ без интернета:
+Локальные модели в Ollama — тот же анализ без интернета:
 
-![Локальная модель](docs/screenshots/app5-analysis-local-ollama.jpg)
+| Gemma3 4B (2,5 мин) | Qwen3 4B с «размышлениями» (21 мин) |
+|---|---|
+| ![Gemma3](docs/screenshots/app5-analysis-gemma3-local.png) | ![Qwen3](docs/screenshots/app6-analysis-qwen3-local.png) |
 
 ## Возможности
 
@@ -26,8 +28,8 @@ pdfplumber · reportlab.*
 - Таблица и сводная статистика по числовым колонкам; первые 15 строк подсвечены — именно они
   уходят в нейросеть.
 - График (Recharts) по выбранной колонке.
-- Анализ на выбор: **YandexGPT Pro 5.1**, **GigaChat 2 Pro** или **локальная gemma3:4b через
-  Ollama** (без интернета и ключей); ответ в Markdown показывается оформленным текстом (с очисткой HTML).
+- Анализ на выбор: **YandexGPT Pro 5.1**, **GigaChat 2 Pro** или локальные **gemma3:4b** и
+  **qwen3:4b** через Ollama (без интернета и ключей); ответ в Markdown показывается оформленным текстом (с очисткой HTML).
 - **PDF-отчёт**: таблица, статистика, выводы модели, сколько строк проанализировано; кириллица
   корректна.
 
@@ -39,10 +41,12 @@ pdfplumber · reportlab.*
 - **Российские модели — напрямую по REST.** YandexGPT — Foundation Models API (API-ключ
   сервисного аккаунта + ID каталога). GigaChat — обмен ключа авторизации на токен на 30 минут
   с кэшем; HTTPS к Сберу — с сертификатом Минцифры (`backend/llm/russian_trusted_root_ca.pem`).
-- **Локальная модель — через REST API Ollama** (`backend/llm/ollama_local.py`, `/api/chat`).
-  Настройки модели — в `ollama/gemma3-analyst.Modelfile`: контекст 4096 (15 строк хватает, больше
-  только тормозит CPU), температура 0.3, ответ до 900 токенов. Таймаут — до 3 часов: на ноутбуке
-  без видеокарты модель думает минутами.
+- **Локальные модели — через REST API Ollama** (`backend/llm/ollama_local.py`, `/api/chat`).
+  Настройки — в `ollama/*.Modelfile`, температура 0.3 у обеих. Gemma3: контекст 4096, ответ до 900
+  токенов. Qwen3 сначала «размышляет» (`think: true`, размышления приходят отдельным полем и в ответ
+  не попадают), поэтому ей нужны контекст 8192 и лимит 4096. С `think: false` она рассуждает прямо
+  в тексте ответа и упирается в лимит, не дойдя до выводов. Таймаут — до 3 часов: на ноутбуке без
+  видеокарты модели думают минутами.
 - **Общий промпт и интерфейс для всех моделей** (`backend/llm/common.py`): добавить третью модель —
   один модуль с функцией `ask(system, user)`.
 - **Шрифт с кириллицей в PDF** подбирается из системы (Arial на Windows, DejaVu Sans на Linux) —
@@ -56,11 +60,14 @@ pdfplumber · reportlab.*
 март) и выручка, завышенная в ~7 раз (Восточная Сибирь, апрель). Скрипт `make_test_data.py`
 генерирует файлы, `run_check.py` прогоняет все эндпоинты и сохраняет отчёты обеих моделей.
 
-| | YandexGPT Pro 5.1 | GigaChat 2 Pro | gemma3:4b (локально) |
-|---|---|---|---|
-| Время ответа | 4,2 с | 9,4 с | 2 мин 35 с (CPU, без видеокарты) |
-| Завышенная выручка (апрель) | найдена | найдена, названа вероятной ошибкой | найдена, но объяснена ростом добычи — с числом из другого месяца |
-| Провал добычи (март) | найден, с точным числом | не найден | не назван аномалией (лишь попал в диапазон «215,4–664,4») |
+| | YandexGPT Pro 5.1 | GigaChat 2 Pro | gemma3:4b (локально) | qwen3:4b (локально) |
+|---|---|---|---|---|
+| Время ответа | 4,2 с | 9,4 с | 2,5 мин | 21 мин (из них ~17 мин — «размышления») |
+| Завышенная выручка (апрель) | найдена | найдена, названа вероятной ошибкой | замечена в обоих прогонах, но оба раза с числом из другой строки | найдена, названа вероятной опечаткой, объяснено почему |
+| Провал добычи (март) | найден, с точным числом | не найден | 1-й прогон — нет, 2-й — да | найден, с точными числами |
+| Ошибки | — | — | «устойчивый рост добычи во всех регионах» и т.п. | мелкие: «в 6 раз» вместо ~6,9, «−50%» вместо −64% |
+
+Локальные модели — ноутбук Intel Core i5-6200U без видеокарты.
 
 ## Стек
 
@@ -83,8 +90,9 @@ npm install
 npm start                                             # http://localhost:5173, /api/* → Flask
 
 # локальная модель (по желанию): установить Ollama с https://ollama.com, затем
-ollama pull gemma3:4b
+ollama pull gemma3:4b && ollama pull qwen3:4b
 ollama create gemma3:4b-analyst -f ollama/gemma3-analyst.Modelfile
+ollama create qwen3:4b-analyst -f ollama/qwen3-analyst.Modelfile
 ```
 
 ## API
@@ -92,7 +100,7 @@ ollama create gemma3:4b-analyst -f ollama/gemma3-analyst.Modelfile
 | Метод | Что делает |
 |---|---|
 | `POST /api/upload` (файл) | колонки, строки, статистика |
-| `POST /api/analyze` (`provider`: `yandex` \| `gigachat` \| `local`, `columns`, `rows`) | текст анализа, модель, время |
+| `POST /api/analyze` (`provider`: `yandex` \| `gigachat` \| `local` \| `local-qwen`, `columns`, `rows`) | текст анализа, модель, время |
 | `POST /api/report` | PDF с таблицей, статистикой и анализом |
 
 ## История
