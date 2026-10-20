@@ -1,12 +1,12 @@
 # ИИ-аналитик таблиц — CSV / XLSX / PDF → график → выводы нейросети → PDF-отчёт
 
 Веб-приложение: загружаете таблицу (CSV, Excel или PDF с таблицей), видите её в браузере и
-график по любой числовой колонке, нажимаете «Проанализировать» — российская нейросеть
-(**YandexGPT** или **GigaChat**, переключатель) находит тенденции и аномалии, а отчёт с
+график по любой числовой колонке, нажимаете «Проанализировать» — нейросеть на выбор (российские облачные **YandexGPT** и
+**GigaChat** или **локальная модель в Ollama** прямо на вашем компьютере) находит тенденции и аномалии, а отчёт с
 таблицей, статистикой и выводами скачивается в PDF.
 
 *Web app: upload a table (CSV / XLSX / PDF), see it with a chart, get an AI analysis from
-YandexGPT or GigaChat, download a PDF report. React + TypeScript (Vite) · Flask · pandas ·
+YandexGPT, GigaChat or a local Ollama model, download a PDF report. React + TypeScript (Vite) · Flask · pandas ·
 pdfplumber · reportlab.*
 
 ![Загрузка таблицы](docs/screenshots/app1-upload-table.png)
@@ -15,6 +15,10 @@ pdfplumber · reportlab.*
 |---|---|
 | ![График](docs/screenshots/app2-chart-anomaly.png) | ![Анализ](docs/screenshots/app3-analysis-yandexgpt.png) |
 
+Локальная модель gemma3:4b в Ollama — тот же анализ без интернета:
+
+![Локальная модель](docs/screenshots/app5-analysis-local-ollama.jpg)
+
 ## Возможности
 
 - Загрузка **CSV, XLSX и PDF**: из PDF таблица собирается со всех страниц, числа из текста
@@ -22,8 +26,8 @@ pdfplumber · reportlab.*
 - Таблица и сводная статистика по числовым колонкам; первые 15 строк подсвечены — именно они
   уходят в нейросеть.
 - График (Recharts) по выбранной колонке.
-- Анализ на выбор: **YandexGPT Pro 5.1** или **GigaChat 2 Pro**; ответ в Markdown показывается
-  оформленным текстом (с очисткой HTML).
+- Анализ на выбор: **YandexGPT Pro 5.1**, **GigaChat 2 Pro** или **локальная gemma3:4b через
+  Ollama** (без интернета и ключей); ответ в Markdown показывается оформленным текстом (с очисткой HTML).
 - **PDF-отчёт**: таблица, статистика, выводы модели, сколько строк проанализировано; кириллица
   корректна.
 
@@ -35,7 +39,11 @@ pdfplumber · reportlab.*
 - **Российские модели — напрямую по REST.** YandexGPT — Foundation Models API (API-ключ
   сервисного аккаунта + ID каталога). GigaChat — обмен ключа авторизации на токен на 30 минут
   с кэшем; HTTPS к Сберу — с сертификатом Минцифры (`backend/llm/russian_trusted_root_ca.pem`).
-- **Общий промпт и интерфейс для обеих моделей** (`backend/llm/common.py`): добавить третью модель —
+- **Локальная модель — через REST API Ollama** (`backend/llm/ollama_local.py`, `/api/chat`).
+  Настройки модели — в `ollama/gemma3-analyst.Modelfile`: контекст 4096 (15 строк хватает, больше
+  только тормозит CPU), температура 0.3, ответ до 900 токенов. Таймаут — до 3 часов: на ноутбуке
+  без видеокарты модель думает минутами.
+- **Общий промпт и интерфейс для всех моделей** (`backend/llm/common.py`): добавить третью модель —
   один модуль с функцией `ask(system, user)`.
 - **Шрифт с кириллицей в PDF** подбирается из системы (Arial на Windows, DejaVu Sans на Linux) —
   без «????» вместо русских букв.
@@ -48,11 +56,11 @@ pdfplumber · reportlab.*
 март) и выручка, завышенная в ~7 раз (Восточная Сибирь, апрель). Скрипт `make_test_data.py`
 генерирует файлы, `run_check.py` прогоняет все эндпоинты и сохраняет отчёты обеих моделей.
 
-| | YandexGPT Pro 5.1 | GigaChat 2 Pro |
-|---|---|---|
-| Время ответа | 4,2 с | 9,4 с |
-| Завышенная выручка (апрель) | найдена | найдена, названа вероятной ошибкой |
-| Провал добычи (март) | найден, с точным числом | не найден |
+| | YandexGPT Pro 5.1 | GigaChat 2 Pro | gemma3:4b (локально) |
+|---|---|---|---|
+| Время ответа | 4,2 с | 9,4 с | 2 мин 35 с (CPU, без видеокарты) |
+| Завышенная выручка (апрель) | найдена | найдена, названа вероятной ошибкой | найдена, но объяснена ростом добычи — с числом из другого месяца |
+| Провал добычи (март) | найден, с точным числом | не найден | не назван аномалией (лишь попал в диапазон «215,4–664,4») |
 
 ## Стек
 
@@ -73,6 +81,10 @@ python -m venv .venv
 cd frontend
 npm install
 npm start                                             # http://localhost:5173, /api/* → Flask
+
+# локальная модель (по желанию): установить Ollama с https://ollama.com, затем
+ollama pull gemma3:4b
+ollama create gemma3:4b-analyst -f ollama/gemma3-analyst.Modelfile
 ```
 
 ## API
@@ -80,7 +92,7 @@ npm start                                             # http://localhost:5173, /
 | Метод | Что делает |
 |---|---|
 | `POST /api/upload` (файл) | колонки, строки, статистика |
-| `POST /api/analyze` (`provider`: `yandex` \| `gigachat`, `columns`, `rows`) | текст анализа, модель, время |
+| `POST /api/analyze` (`provider`: `yandex` \| `gigachat` \| `local`, `columns`, `rows`) | текст анализа, модель, время |
 | `POST /api/report` | PDF с таблицей, статистикой и анализом |
 
 ## История

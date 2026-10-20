@@ -1,0 +1,11 @@
+# Локальная модель для ИИ-аналитика таблиц.
+# Сборка: ollama create gemma3:4b-analyst -f ollama/gemma3-analyst.Modelfile
+FROM gemma3:4b
+
+# 15 строк таблицы + промпт + ответ укладываются в 4096 токенов;
+# больше контекст на слабом CPU только замедляет и съедает память
+PARAMETER num_ctx 4096
+# как у облачных моделей в приложении: точнее, без фантазий
+PARAMETER temperature 0.3
+# ответ до ~1500 знаков (MAX_TOKENS в llm/common.py)
+PARAMETER num_predict 900

@@ -17,7 +17,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from llm import gigachat, yandex_gpt
+from llm import gigachat, ollama_local, yandex_gpt
 from llm.common import SYSTEM_PROMPT, user_message
 
 app = Flask(__name__)
@@ -28,6 +28,7 @@ N_ROWS = 15
 PROVIDERS = {
     "yandex": (yandex_gpt, yandex_gpt.MODEL_NAME),
     "gigachat": (gigachat, gigachat.MODEL_NAME),
+    "local": (ollama_local, ollama_local.MODEL_NAME),
 }
 
 # --- Шрифт с кириллицей для PDF (у коуча здесь были «?») ---
@@ -127,7 +128,7 @@ def analyze():
     d = request.get_json(force=True)
     provider = d.get("provider")
     if provider not in PROVIDERS:
-        return jsonify(error="provider должен быть yandex или gigachat"), 400
+        return jsonify(error="provider должен быть yandex, gigachat или local"), 400
     module, model_name = PROVIDERS[provider]
     rows = (d.get("rows") or [])[:N_ROWS]
     t0 = time.monotonic()
